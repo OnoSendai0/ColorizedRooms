@@ -12,7 +12,8 @@ module.exports = class TestLibrary {
 		try {
 			if( fs.existsSync(this.testFolder)) {
 				fs.readdirSync(this.testFolder).forEach(file => {
-					allTestFiles.push(`${this.testFolder}/${file}`);
+					if( file.endsWith('.tst'))
+						allTestFiles.push(`${this.testFolder}/${file}`);
 				})
 			}
 		} catch (e) {
