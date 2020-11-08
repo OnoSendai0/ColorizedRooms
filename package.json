@@ -1,0 +1,11 @@
+{
+	"name": "colorizedrooms",
+	"version": "1.0.0",
+	"description": "a playground",
+	"main": "color.js",
+	"scripts": {
+		"test": "test"
+	},
+	"author": "Jeremy Lutz",
+	"license": "ISC"
+}
