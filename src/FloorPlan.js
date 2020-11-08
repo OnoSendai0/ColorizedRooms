@@ -1,4 +1,5 @@
 const fs = require('fs');
+const Palette = require('./Palette');
 
 const WALL = 'W';
 const DOOR = 'D';
@@ -7,7 +8,7 @@ const UNKNOWN = '.';
 module.exports = class FloorPlan {
 	source = [];
 	rows = [];
-	isProcessed = false;
+	filename = "";
 
 	GetCell( row, col) {
 		let value = -1; // out of bounds
@@ -108,6 +109,8 @@ module.exports = class FloorPlan {
 			var contents = fs.readFileSync(file, 'utf-8');
 			this.source = contents.split("\n");
 
+			this.filename = file;
+
 			// create an empty copy with 'W' for walls and '.' for unprocessed cells
 			let line, columns;
 			for( let iRow = 0; iRow < this.source.length; iRow++ ) {
@@ -139,7 +142,7 @@ module.exports = class FloorPlan {
 	}
 
 	DumpSource() {
-		console.log("\nSource file:");
+		console.log(`\nSource (${this.filename}):`);
 		this.source.forEach( line => {
 			console.log(line);
 		})
@@ -154,4 +157,28 @@ module.exports = class FloorPlan {
 			})
 			console.log(line);
 		})
-	}}
+	}
+
+	RenderOutput( ) {
+		console.log("\nOutput:");
+		const palette = new Palette();
+		this.rows.forEach( columns => {
+			let line = "";
+			columns.forEach( cell => {
+				switch (cell) {
+					case WALL:
+						line += '#';
+						break;
+
+					case DOOR:
+						line += ' ';
+						break;
+
+					default:
+						line += palette.GetOutputStringForCell( ' ', palette.GetColorByIndex(cell) );
+				}
+			});
+			console.log(line);
+		})
+	}
+}
