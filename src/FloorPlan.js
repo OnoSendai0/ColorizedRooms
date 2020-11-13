@@ -90,9 +90,10 @@ module.exports = class FloorPlan {
 			const valueEast = this.GetTileValue( cell.East() );
 			const valueWest = this.GetTileValue( cell.West() );
 
-			if( valueNorth == FloorPlan.WALL && valueSouth == FloorPlan.WALL) return true;
-
-			if( valueEast == FloorPlan.WALL && valueWest == FloorPlan.WALL) return true;
+			if( ( valueNorth == FloorPlan.WALL && valueSouth == FloorPlan.WALL) || ( valueEast == FloorPlan.WALL && valueWest == FloorPlan.WALL) ) {
+				this.SetTileValue( cell, FloorPlan.DOOR );
+				return true;
+			}
 		}
 
 		return false;
@@ -104,7 +105,9 @@ module.exports = class FloorPlan {
 			let columns = this.rows[iRow];
 			for( let iCol = colStart; iCol < columns.length; iCol++) {
 				if( columns[iCol] == FloorPlan.UNKNOWN) {
-					return new Coordinate( iRow, iCol);
+					const here = new Coordinate( iRow, iCol );
+					// the first unknonwn space might be a door so verify it isn't before considering this a room
+					if( !this.IsDoor( here ) ) return here;
 				}
 			}
 		}

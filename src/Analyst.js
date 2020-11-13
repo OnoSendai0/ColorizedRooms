@@ -12,7 +12,7 @@ module.exports = class Analyst {
 
 	}
 
-	static Colorize = (source, filename) => {
+	static Colorize = (source, filename, showDebug) => {
 		// initialize from source
 		let plan = new FloorPlan( source );
 		plan.ParseSourceAndInitializeInternals( );
@@ -27,7 +27,7 @@ module.exports = class Analyst {
 		analyst.DoAnalysis();
 
 		// dump internal structure for debugging
-//		analyst.DumpInternal();
+		if( showDebug ) analyst.DumpInternal();
 
 		console.log("\nOutput:");
 		plan.RenderOutput();
@@ -74,10 +74,10 @@ module.exports = class Analyst {
 				break;
 
 			case FloorPlan.UNKNOWN:
-				if( this.plan.IsDoor( here )) {
-					this.plan.SetTileValue( here, FloorPlan.DOOR);
-					// stop painting
-				} else {
+				if( !this.plan.IsDoor( here )) {
+//					this.plan.SetTileValue( here, FloorPlan.DOOR);
+//					// stop painting
+//				} else {
 					// apply the room number to this cell
 					this.plan.SetTileValue( here, roomNumber);
 
