@@ -1,6 +1,5 @@
-const fs = require('fs');
-const TestLibrary = require('./src/TestLibrary');
-const Mapper = require('./src/Mapper');
+const FileUtility = require('./src/FileUtility');
+const Analyst = require('./src/Analyst');
 
 const applicationArguments = process.argv.slice(2);
 const numberOfArguments = applicationArguments.length;
@@ -13,15 +12,13 @@ const ShowUsage = () => {
 	console.log("      colorize the floorplan in {filename}");
 }
 
-mapper = new Mapper();
-
 if( numberOfArguments !== 1 ) {
 	ShowUsage();	
 } else if( applicationArguments[0] == "--test" ) {
-	library = new TestLibrary();
-	library.GetAllTestFiles().forEach(file => {
-		mapper.Colorize(file);
+	FileUtility.GetAllTestFiles().forEach(file => {
+		const source = FileUtility.ReadFile( file);
+		Analyst.Colorize( source, file );
 	});
 } else {
-	mapper.Colorize(applicationArguments[0]);
+	Analyst.Colorize( applicationArguments[0] );
 }

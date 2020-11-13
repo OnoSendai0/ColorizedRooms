@@ -1,128 +1,37 @@
-const fs = require('fs');
 const Palette = require('./Palette');
-
-const WALL = 'W';
-const DOOR = 'D';
-const UNKNOWN = '.';
+const Coordinate = require('./Coordinate');
 
 module.exports = class FloorPlan {
-	source = [];
-	rows = [];
-	filename = "";
 
-	GetCell( row, col) {
-		let value = -1; // out of bounds
-		if( row >= 0 && row < this.rows.length) {
-			let columns = this.rows[row];
-			if( col >=0 && col < columns.length) {
-				value = columns[col];
-			}
-		}
-		return value;
-	}
+	constructor( source ) {
+		this.source = source; // input
+		this.rows = []; // internal grid
 
-	SetCell( row, col, value) {
-		if( row >= 0 && row < this.rows.length) {
-			let columns = this.rows[row];
-			if( col >=0 && col < columns.length) {
-				columns[col] = value;
-			} else {
-				throw `column ${col} is out of bounds`;
-			}
-		} else {
-			throw `row ${row} is out of bounds`;
-		}
-	}
-
-	IsDoor (row, col ) {
-		const here = this.GetCell(row, col);
-		if( here == DOOR) return true;
-
-		if( here == UNKNOWN) {
-			const north = this.GetCell(row - 1, col);
-			const south = this.GetCell(row + 1, col);
-			const east = this.GetCell(row, col + 1);
-			const west = this.GetCell(row , col - 1);
-
-			if( north == WALL && south == WALL) return true;
-
-			if( east == WALL && west == WALL) return true;
+		this.initialized = false;
+		this.inputError = null;
 		}
 
-		return false;
-	}
+	static WALL = 'W';
+	static DOOR = 'D';
+	static UNKNOWN = '.';
+	static OUTOFBOUNDS = -1;
 
-	FindStartOfNextRoom() {
-		let startOfRoom = null;
-		for( let iRow = 0; startOfRoom == null && iRow < this.rows.length; iRow++) {
-			let columns = this.rows[iRow];
-			for( let iCol = 0; startOfRoom == null && iCol < columns.length; iCol++) {
-				if( columns[iCol] == UNKNOWN) {
-					startOfRoom = { row: iRow, col: iCol };
-				}
-			}
-		}
-		return startOfRoom;
-	}
-
-	PaintRoom( startOfRoom, roomNumber) {
-		// paint the room by applying the room number to the first cell
-		// painting a cell also (recursifly) paints the cells beside, above and below it
-		this.PaintCell (startOfRoom.row, startOfRoom.col, roomNumber);
-	}
-
-	PaintCell( row, col, roomNumber) {
-		switch (this.GetCell(row, col)) {
-			case WALL:
-				// a wall -- we're done
-				break;
-
-			case DOOR:
-				// a door -- we're done
-				break;
-
-			case roomNumber:
-				// already painted -- we're done
-				break;
-
-			case UNKNOWN:
-				if( this.IsDoor(row, col)) {
-					this.SetCell( row, col, DOOR);
-					// stop painting
-				} else {
-					// apply the room number to this cell
-					this.SetCell( row, col, roomNumber);
-
-					// recurse to the north, south, east and west
-					this.PaintCell( row - 1, col, roomNumber);
-					this.PaintCell( row + 1, col, roomNumber);
-					this.PaintCell( row, col + 1, roomNumber);
-					this.PaintCell( row, col - 1, roomNumber);
-				}
-				break;
-			}
-	}
-
-	LoadFromFile( file ) {
+	ParseSourceAndInitializeInternals( ) {
 		try {
-			// store the original source as an array of lines
-			var contents = fs.readFileSync(file, 'utf-8');
-			this.source = contents.split("\n");
-
-			this.filename = file;
-
 			// create an empty copy with 'W' for walls and '.' for unprocessed cells
 			let line, columns;
+			let inputWidth = -1; // unspecified
 			for( let iRow = 0; iRow < this.source.length; iRow++ ) {
 				line = this.source[iRow];
+
 				columns = [];
 				for( let iCol = 0; iCol < line.length; iCol++ ) {
 					switch( line.charAt(iCol)) {
 						case '#':
-							columns.push(WALL); // wall
+							columns.push(FloorPlan.WALL); // wall
 							break;
 						case ' ':
-							columns.push(UNKNOWN); // door or floor
+							columns.push(FloorPlan.UNKNOWN); // door or floor
 							break;
 						case '\l':
 							// ignore linefeed
@@ -131,51 +40,112 @@ module.exports = class FloorPlan {
 							// ignore carriage return
 							break;
 						default:
-							throw `Invalid characater '${line.charAt(iCol)}' found at row ${iRow}, column ${iCol} in file ${file}`;
+							throw `Invalid characater '${line.charAt(iCol)}' found at row ${iRow}, column ${iCol}`;
 					}
 				}
+
+				// check that all lines are the same length
+				if( inputWidth !== columns.length) {
+					if( inputWidth === -1 ) {
+						// this is our fist line; it defines the width
+						inputWidth = columns.length;
+					} else {
+						// this is a mismatch so abort
+						throw `line ${iRow}: length (${columns.length}) does not match length of first line (${inputWidth})`;
+					}
+				}
+
 				this.rows.push(columns);
 			}
+
+			// parsing was successful
+			this.initialized = true;
+
+			// set the upper limit for valid rows and columns
+			Coordinate.SetLimits( this.rows.length - 1, inputWidth );
 		} catch (e) {
-			console.log (e);
+			this.inputError = e;
 		}
 	}
 
+	GetTileValue( tile ) {
+		return tile.IsValid() ? this.rows[tile.row][tile.col] : FloorPlan.OUTOFBOUNDS;
+	}
+
+	SetTileValue( tile, value) {
+		if( tile.IsValid() ) {
+			this.rows[tile.row][tile.col] = value;
+		} else {
+			throw `cell(${tile.row},${tile.col}) is out of bounds`;
+		}
+	}
+
+	IsDoor ( cell ) {
+		const valueHere = this.GetTileValue( cell );
+		if( valueHere == FloorPlan.DOOR) return true;
+
+		if( valueHere == FloorPlan.UNKNOWN) {
+			const valueNorth = this.GetTileValue( cell.North() );
+			const valueSouth = this.GetTileValue( cell.South() );
+			const valueEast = this.GetTileValue( cell.East() );
+			const valueWest = this.GetTileValue( cell.West() );
+
+			if( valueNorth == FloorPlan.WALL && valueSouth == FloorPlan.WALL) return true;
+
+			if( valueEast == FloorPlan.WALL && valueWest == FloorPlan.WALL) return true;
+		}
+
+		return false;
+	}
+
+	FindFirstUnknownTile( start ) {
+		for( let iRow = start.row; iRow < this.rows.length; iRow++) {
+			const colStart = (iRow === start.row) ? start.col : 0;
+			let columns = this.rows[iRow];
+			for( let iCol = colStart; iCol < columns.length; iCol++) {
+				if( columns[iCol] == FloorPlan.UNKNOWN) {
+					return new Coordinate( iRow, iCol);
+				}
+			}
+		}
+		return Coordinate.Null();
+	}
+
 	DumpSource() {
-		console.log(`\nSource (${this.filename}):`);
 		this.source.forEach( line => {
 			console.log(line);
-		})
+		});
+
+		if (this.inputError !== null)
+			console.log(this.inputError);
 	}
 
 	DumpInternal() {
-		console.log("\nInternal map:");
 		this.rows.forEach( columns => {
 			let line = "";
-			columns.forEach( cell => {
-				line += cell;
+			columns.forEach( col => {
+				line += col;
 			})
 			console.log(line);
-		})
+		});
 	}
 
 	RenderOutput( ) {
-		console.log("\nOutput:");
 		const palette = new Palette();
 		this.rows.forEach( columns => {
 			let line = "";
-			columns.forEach( cell => {
-				switch (cell) {
-					case WALL:
-						line += '#';
+			columns.forEach( col => {
+				switch (col) {
+					case FloorPlan.WALL:
+						line += Palette.GetOutputStringForCell( '#', Palette.DefaultColor );
 						break;
 
-					case DOOR:
-						line += ' ';
+					case FloorPlan.DOOR:
+						line += Palette.GetOutputStringForCell( ' ', Palette.DefaultColor );
 						break;
 
 					default:
-						line += palette.GetOutputStringForCell( ' ', palette.GetColorByIndex(cell) );
+						line += Palette.GetOutputStringForCell( ' ', palette.GetColorByIndex(col) );
 				}
 			});
 			console.log(line);
