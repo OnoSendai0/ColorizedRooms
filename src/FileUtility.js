@@ -11,7 +11,7 @@ module.exports = class FileUtility {
 				fs.readdirSync(testFolder).forEach(file => {
 					if( file.endsWith('.tst'))
 						allTestFiles.push(`${testFolder}/${file}`);
-				})
+				});
 			}
 		} catch (e) {
 			console.log(e);

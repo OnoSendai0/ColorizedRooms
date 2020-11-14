@@ -62,7 +62,7 @@ module.exports = class FloorPlan {
 			this.initialized = true;
 
 			// set the upper limit for valid rows and columns
-			Coordinate.SetLimits( this.rows.length - 1, inputWidth );
+			Coordinate.SetLimits( this.rows.length - 1, inputWidth - 1 );
 		} catch (e) {
 			this.inputError = e;
 		}
@@ -128,7 +128,7 @@ module.exports = class FloorPlan {
 			let line = "";
 			columns.forEach( col => {
 				line += col;
-			})
+			});
 			console.log(line);
 		});
 	}
@@ -152,6 +152,6 @@ module.exports = class FloorPlan {
 				}
 			});
 			console.log(line);
-		})
+		});
 	}
 }
