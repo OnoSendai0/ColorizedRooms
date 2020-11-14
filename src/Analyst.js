@@ -8,10 +8,9 @@ module.exports = class Analyst {
 		this.plan = plan;
 
 		this.lastRoomStart = new Coordinate( 0, 0 );
-		this.rooms = [];
 	}
 
-	static Colorize = (source, filename, showDebug) => {
+	static Colorize = (source, filename, useMinColors, showDebug) => {
 		// initialize from source
 		let plan = new FloorPlan( source );
 		plan.ParseSourceAndInitializeInternals( );
@@ -24,11 +23,16 @@ module.exports = class Analyst {
 
 		const analyst = new Analyst( plan );
 		analyst.DoRoomAnalysis();
-		analyst.DoEdgeAnalysis();
-		analyst.DoColorAnalysis();
+
+		if( useMinColors ) {
+			analyst.DoEdgeAnalysis();
+			analyst.DoMinimizedColorAnalysis();
+		} else {
+			analyst.DoRegularColorAnalysis();
+		}
 
 		// dump internal structure for debugging
-		if( showDebug ) analyst.DumpInternal();
+		if( showDebug ) analyst.plan.DumpInternal();
 
 		console.log("\nOutput:");
 		plan.RenderOutput();
@@ -45,7 +49,7 @@ module.exports = class Analyst {
 	}
 
 	DoEdgeAnalysis() {
-		this.rooms.forEach( room => {
+		this.plan.rooms.forEach( room => {
 			// the room start is the upper left tile of the room
 			// start checking neighbours on the north wall, moving clockwise until you reach the corner NW of the start
 			const edge = room.start.North();
@@ -54,12 +58,12 @@ module.exports = class Analyst {
 		});
 	}
 
-	DoColorAnalysis() {
-		this.rooms.forEach( thisRoom => {
+	DoMinimizedColorAnalysis() {
+		this.plan.rooms.forEach( thisRoom => {
 			let excludedColors = [];
 
 			for (let key of thisRoom.neighbours.keys()) {
-				const neighbour = this.rooms[ key ];
+				const neighbour = this.plan.rooms[ key ];
 				if( neighbour.color != Room.NOCOLOR ) excludedColors.push( neighbour.color );
 			}
 
@@ -68,6 +72,12 @@ module.exports = class Analyst {
 				color++;
 			}
 			thisRoom.color = color;
+		});
+	}
+
+	DoRegularColorAnalysis() {
+		this.plan.rooms.forEach( thisRoom => {
+			thisRoom.color = thisRoom.roomNumber;
 		});
 	}
 
@@ -121,7 +131,7 @@ module.exports = class Analyst {
 	ApplyNumberToRoom( roomNumber, startOfRoom ) {
 		// paint the room by applying the room number to the first cell
 		// painting a cell also (recursifly) paints the cells beside, above and below it
-		this.rooms.push( new Room( roomNumber, startOfRoom ) );
+		this.plan.rooms.push( new Room( roomNumber, startOfRoom ) );
 		this.ApplyRoomNumberToTile( roomNumber, startOfRoom );
 	}
 
@@ -153,17 +163,6 @@ module.exports = class Analyst {
 				}
 				break;
 			}
-	}
-
-	DumpInternal() {
-		console.log("\nInternal map:");
-
-		this.plan.DumpInternal();
-
-		console.log("rooms:");
-		this.rooms.forEach( room => {
-			console.log(`   ${room.AsString()}`);
-		});
 	}
 
 }

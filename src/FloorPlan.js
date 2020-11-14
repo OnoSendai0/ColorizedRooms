@@ -6,6 +6,7 @@ module.exports = class FloorPlan {
 	constructor( source ) {
 		this.source = source; // input
 		this.rows = []; // internal grid
+		this.rooms = [];
 
 		this.initialized = false;
 		this.inputError = null;
@@ -124,12 +125,18 @@ module.exports = class FloorPlan {
 	}
 
 	DumpInternal() {
+		console.log("\nInternal map:");
 		this.rows.forEach( columns => {
 			let line = "";
 			columns.forEach( col => {
 				line += col;
 			});
 			console.log(line);
+		});
+
+		console.log("rooms:");
+		this.rooms.forEach( room => {
+			console.log(`   ${room.AsString()}`);
 		});
 	}
 
@@ -148,7 +155,8 @@ module.exports = class FloorPlan {
 						break;
 
 					default:
-						line += Palette.GetOutputStringForCell( ' ', palette.GetColorByIndex(col) );
+						const colorIndex = this.rooms[ col ].color;
+						line += Palette.GetOutputStringForCell( ' ', palette.GetColorByIndex(colorIndex) );
 				}
 			});
 			console.log(line);
